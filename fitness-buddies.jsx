@@ -7,7 +7,7 @@ const CONFIG = {
     {
       id: "madalina",
       name: "Madalina",
-      emoji: "🌸",
+      emoji: "❤️",
       color: "#C084FC",
       lightColor: "#F3E8FF",
       telegram_chat_id: "1544444861",
@@ -15,7 +15,7 @@ const CONFIG = {
     {
       id: "gabriela",
       name: "Gabriela",
-      emoji: "⚡",
+      emoji: "🤍",
       color: "#FB923C",
       lightColor: "#FFF7ED",
       telegram_chat_id: "5484205376",
