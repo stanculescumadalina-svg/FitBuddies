@@ -15,21 +15,26 @@
     const { useState, useCallback } = React;
     const CONFIG = {
       users: [
-        { id: "madalina", name: "Madalina", emoji: "🌸", color: "#C084FC", lightColor: "#F3E8FF", telegram_chat_id: "1544444861" },
-        { id: "gabriela", name: "Gabriela", emoji: "⚡", color: "#FB923C", lightColor: "#FFF7ED", telegram_chat_id: "5484205376" },
+        { id: "madalina", name: "Madalina", emoji: "❤️", color: "#C084FC", lightColor: "#F3E8FF", telegram_chat_id: "1544444861" },
+        { id: "gabriela", name: "Gabriela", emoji: "🤍", color: "#FB923C", lightColor: "#FFF7ED", telegram_chat_id: "5484205376" },
       ],
       telegram_bot_token: "8864998845:AAHxHXLpm0VRXaM6gCNLoN21LGe8zmPAcIc",
     };
     const STORAGE_KEY = "fitness-buddies-v1";
     function getToday() { return new Date().toISOString().slice(0, 10); }
     function getMonthDays() {
-      const now = new Date(), year = now.getFullYear(), month = now.getMonth(), todayNum = now.getDate();
-      const total = new Date(year, month + 1, 0).getDate(), days = [];
+      const now = new Date();
+      const year = now.getFullYear(), month = now.getMonth(), todayNum = now.getDate();
+      const total = new Date(year, month + 1, 0).getDate();
+      let firstDow = new Date(year, month, 1).getDay();
+      firstDow = (firstDow + 6) % 7;
+      const cells = [];
+      for (let i = 0; i < firstDow; i++) cells.push(null);
       for (let d = 1; d <= total; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
-        days.push({ day: d, dateStr, isFuture: d > todayNum, isToday: d === todayNum });
+        cells.push({ day: d, dateStr, isFuture: d > todayNum, isToday: d === todayNum });
       }
-      return days;
+      return cells;
     }
     function loadData() { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : {}; } catch { return {}; } }
     function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
@@ -45,15 +50,15 @@
       return s;
     }
     function getTotal(data, uid) { return Object.values(data).filter(v => v[uid]).length; }
-
     function App() {
       const [activeUser, setActiveUser] = useState(null);
       const [checkData, setCheckData] = useState(loadData);
       const [toast, setToast] = useState(null);
       const [sending, setSending] = useState(false);
       const TODAY = getToday();
-      const days = getMonthDays();
+      const cells = getMonthDays();
       const monthLabel = new Date().toLocaleString("ro-RO", { month:"long", year:"numeric" });
+      const DOW = ["L","M","M","J","V","S","D"];
       const showToast = (msg, type="success") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
       const handleCheck = useCallback(async () => {
         if (!activeUser) return;
@@ -75,7 +80,7 @@
         <div style={{minHeight:"100vh",background:"#F9FAFB",fontFamily:"system-ui",paddingBottom:60}}>
           <header style={{background:"#fff",borderBottom:"1px solid #E5E7EB",position:"sticky",top:0,zIndex:10}}>
             <div style={{maxWidth:480,margin:"0 auto",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <span style={{fontWeight:700,fontSize:18,color:"#111827"}}>🏃 Fit Buddies</span>
+              <span style={{fontWeight:700,fontSize:18,color:"#111827"}}>🏃‍♀️ Fit Buddies</span>
               <span style={{background:"#F3F4F6",borderRadius:20,padding:"4px 12px",fontSize:13,color:"#6B7280",textTransform:"capitalize"}}>{monthLabel}</span>
             </div>
           </header>
@@ -109,8 +114,15 @@
           )}
           <div style={{maxWidth:480,margin:"0 auto",padding:"24px 20px 0"}}>
             <p style={{fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.08em",color:"#9CA3AF",marginBottom:12}}>Calendarul lunii</p>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6}}>
-              {days.map(({day,dateStr,isFuture,isToday}) => {
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4}}>
+              {DOW.map((d,i) => (
+                <div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,color:"#9CA3AF",padding:"4px 0"}}>{d}</div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
+              {cells.map((cell, i) => {
+                if (!cell) return <div key={`empty-${i}`} />;
+                const { day, dateStr, isFuture, isToday } = cell;
                 const m = checkData[dateStr]||{};
                 const bothDone = CONFIG.users.every(u=>m[u.id]);
                 const oneDone = CONFIG.users.some(u=>m[u.id]);
@@ -121,6 +133,7 @@
                     <span style={{fontSize:12,fontWeight:600}}>{day}</span>
                     {bothDone&&<span style={{fontSize:9}}>🤝</span>}
                     {oneDone&&!bothDone&&<span style={{fontSize:9}}>{m["madalina"]?CONFIG.users[0].emoji:CONFIG.users[1].emoji}</span>}
+                    {isToday&&!oneDone&&<div style={{width:4,height:4,borderRadius:"50%",background:"#1F2937",marginTop:2}}/>}
                   </div>
                 );
               })}
