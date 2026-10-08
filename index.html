@@ -35,7 +35,7 @@ async function wr(key,uid,val){try{await fetch(FB+"/checkData/"+key+"/"+uid+".js
 function streak(D,u){let s=0;const d=new Date();if(!D[ds(d)]?.[u]?.done)d.setDate(d.getDate()-1);while(D[ds(d)]?.[u]?.done){s++;d.setDate(d.getDate()-1);}return s;}
 function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);if(yy===y&&mm===m+1&&D[k]?.[u]?.done){tot++;const w=D[k][u].workout||"Nespecificat";c[w]=(c[w]||0)+1;}});return {tot,c};}
 function App(){
-const [me,setMe]=useState(null);
+const [me,setMe]=useState(()=>localStorage.getItem("fb-me"));
 const [D,setD]=useState({});
 const [toast,setToast]=useState(null);
 const [pick,setPick]=useState(false);
@@ -74,10 +74,10 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 <div style={{background:card,borderBottom:"1px solid "+bd,position:"sticky",top:0,zIndex:10}}><div style={{maxWidth:480,margin:"0 auto",padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
 <b style={{fontSize:18,color:tx}}>🏃‍♀️ Fit Buddies</b>
 <button onClick={()=>setDk(!dk)} style={{background:"none",border:"1px solid "+bd,borderRadius:20,padding:"4px 10px",fontSize:16}}>{dk?"☀️":"🌙"}</button></div></div>
-<div style={wrap}><p style={lbl}>Cine ești azi?</p><div style={{display:"flex",gap:12}}>
-{U.map(u=><button key={u.id} onClick={()=>{setMe(u.id);setPick(false);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"16px 12px",borderRadius:16,fontFamily:"inherit",background:me===u.id?u.color:card,color:me===u.id?"#fff":tx,border:"2px solid "+u.color}}>
-<span style={{fontSize:28}}>{u.emoji}</span><b>{u.name}</b>{D[T]?.[u.id]?.done&&<small>✓ azi</small>}</button>)}
-</div></div>
+{!me&&<div style={wrap}><p style={lbl}>Cine ești?</p><div style={{display:"flex",gap:12}}>
+{U.map(u=><button key={u.id} onClick={()=>{setMe(u.id);localStorage.setItem("fb-me",u.id);}} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6,padding:"16px 12px",borderRadius:16,fontFamily:"inherit",background:card,color:tx,border:"2px solid "+u.color}}>
+<span style={{fontSize:28}}>{u.emoji}</span><b>{u.name}</b></button>)}
+</div></div>}
 {user&&<div style={wrap}><div style={{borderRadius:20,padding:20,border:"2px solid "+user.color,background:dk?user.dark:user.light,display:"flex",flexDirection:"column",gap:14}}>
 <div style={{color:tx}}><b style={{fontSize:18}}>{user.emoji} {user.name}</b>
 <div style={{fontSize:13,color:sub,marginTop:4}}>🔥 {st} zile la rând · 📅 {ms.tot} luna asta</div>
