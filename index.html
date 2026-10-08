@@ -16,6 +16,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
+  (async()=>{try{const raw=localStorage.getItem("fitness-buddies-v1");if(!raw||localStorage.getItem("fb-migrated"))return;const old=JSON.parse(raw);for(const day in old){for(const uid in old[day]){const v=old[day][uid];if(v===true||(v&&v.done)){await fetch("https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app/checkData/"+day+"/"+uid+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true,workout:(v&&v.workout)||""})});}}}localStorage.setItem("fb-migrated","1");}catch(e){}})();
 const {useState,useEffect}=React;
 const FB="https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app";
 const TG="8864998845:AAHxHXLpm0VRXaM6gCNLoN21LGe8zmPAcIc";
