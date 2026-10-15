@@ -125,13 +125,13 @@ b.onclick=async function(){
 var data=await fetch(DB+".json").then(function(r){return r.json()}).catch(function(){return null})||{};
 var ids={};for(var d in data)for(var u in data[d])ids[u]=1;ids=Object.keys(ids);
 var me=ids[0];try{for(var i=0;i<localStorage.length;i++){var v=localStorage.getItem(localStorage.key(i));if(ids.indexOf(v)>-1)me=v;}}catch(e){}
-var y=new Date();y.setDate(y.getDate()-1);var sel="";
+var sel="";
 var ov=document.createElement("div");
 ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px";
 var bx=document.createElement("div");
 bx.style.cssText="background:#fff;color:#111;border-radius:18px;padding:20px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;font-family:inherit";
-bx.innerHTML='<b style="font-size:17px">Adaugă antrenament în trecut</b>'+
-'<input id="pd" type="date" max="'+ds(new Date())+'" value="'+ds(y)+'" style="'+S+'">'+
+bx.innerHTML='<b style="font-size:17px">Adaugă / modifică antrenament</b>'+
+'<input id="pd" type="date" max="'+ds(new Date())+'" value="'+ds(new Date())+'" style="'+S+'">'+
 '<select id="pu" style="'+S+'">'+ids.map(function(i){return '<option value="'+i+'"'+(i===me?" selected":"")+'>'+i.charAt(0).toUpperCase()+i.slice(1)+'</option>'}).join("")+'</select>'+
 '<div id="pw" style="display:flex;flex-wrap:wrap;gap:8px">'+W.map(function(w){return '<button data-w="'+w+'" style="padding:8px 14px;border-radius:20px;border:1.5px solid #111;background:#fff;color:#111;font-size:13px;font-weight:600">'+w+'</button>'}).join("")+'</div>'+
 '<input id="pc" placeholder="Altceva..." style="'+S+'">'+
@@ -140,7 +140,10 @@ bx.innerHTML='<b style="font-size:17px">Adaugă antrenament în trecut</b>'+
 '<button id="pn" style="padding:10px;border-radius:12px;border:none;background:#F3F4F6;color:#111;font-size:14px">Închide</button>';
 ov.appendChild(bx);document.body.appendChild(ov);
 var q=function(s){return bx.querySelector(s)};
-bx.querySelectorAll("[data-w]").forEach(function(x){x.onclick=function(){sel=x.dataset.w;q("#pc").value="";bx.querySelectorAll("[data-w]").forEach(function(z){z.style.background=z===x?"#111827":"#fff";z.style.color=z===x?"#fff":"#111"})}});
+var paint=function(){bx.querySelectorAll("[data-w]").forEach(function(z){var on=z.dataset.w===sel;z.style.background=on?"#111827":"#fff";z.style.color=on?"#fff":"#111"})};
+bx.querySelectorAll("[data-w]").forEach(function(x){x.onclick=function(){sel=x.dataset.w;q("#pc").value="";paint()}});
+var pf=function(){var e=(data[q("#pd").value]||{})[q("#pu").value];var w=e&&e.done?(e.workout||""):"";sel=W.indexOf(w)>-1?w:"";q("#pc").value=sel?"":w;paint()};
+q("#pd").onchange=pf;q("#pu").onchange=pf;pf();
 q("#pn").onclick=function(){ov.remove()};
 var url=function(){return DB+"/"+q("#pd").value+"/"+q("#pu").value+".json"};
 q("#ps").onclick=async function(){var w=q("#pc").value.trim()||sel;if(!q("#pd").value)return;
@@ -149,6 +152,5 @@ q("#px").onclick=async function(){await fetch(url(),{method:"DELETE"});location.
 };
 })();
 </script>
-
 </body>
 </html>
