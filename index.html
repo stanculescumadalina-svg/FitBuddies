@@ -112,5 +112,43 @@ return <div key={c.key} onClick={()=>(a||b)&&setDet({key:c.key,m})} style={{aspe
 </div>);}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+<script>
+(function(){
+var DB="https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app/checkData";
+var W=["Full Body","Upper Body","Lower Body","Core"];
+function ds(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");}
+var S="padding:10px;border-radius:12px;border:1px solid #ccc;font-size:15px;width:100%;box-sizing:border-box;font-family:inherit";
+var b=document.createElement("button");b.textContent="📅";
+b.style.cssText="position:fixed;right:16px;bottom:90px;z-index:90;width:52px;height:52px;border-radius:50%;border:none;background:#111827;color:#fff;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,.3)";
+document.body.appendChild(b);
+b.onclick=async function(){
+var data=await fetch(DB+".json").then(function(r){return r.json()}).catch(function(){return null})||{};
+var ids={};for(var d in data)for(var u in data[d])ids[u]=1;ids=Object.keys(ids);
+var me=ids[0];try{for(var i=0;i<localStorage.length;i++){var v=localStorage.getItem(localStorage.key(i));if(ids.indexOf(v)>-1)me=v;}}catch(e){}
+var y=new Date();y.setDate(y.getDate()-1);var sel="";
+var ov=document.createElement("div");
+ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px";
+var bx=document.createElement("div");
+bx.style.cssText="background:#fff;color:#111;border-radius:18px;padding:20px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;font-family:inherit";
+bx.innerHTML='<b style="font-size:17px">Adaugă antrenament în trecut</b>'+
+'<input id="pd" type="date" max="'+ds(new Date())+'" value="'+ds(y)+'" style="'+S+'">'+
+'<select id="pu" style="'+S+'">'+ids.map(function(i){return '<option value="'+i+'"'+(i===me?" selected":"")+'>'+i.charAt(0).toUpperCase()+i.slice(1)+'</option>'}).join("")+'</select>'+
+'<div id="pw" style="display:flex;flex-wrap:wrap;gap:8px">'+W.map(function(w){return '<button data-w="'+w+'" style="padding:8px 14px;border-radius:20px;border:1.5px solid #111;background:#fff;color:#111;font-size:13px;font-weight:600">'+w+'</button>'}).join("")+'</div>'+
+'<input id="pc" placeholder="Altceva..." style="'+S+'">'+
+'<button id="ps" style="padding:12px;border-radius:12px;border:none;background:#111827;color:#fff;font-size:15px;font-weight:600">Salvează</button>'+
+'<button id="px" style="padding:10px;border-radius:12px;border:none;background:#FEE2E2;color:#B91C1C;font-size:14px">Șterge bifa din ziua aleasă</button>'+
+'<button id="pn" style="padding:10px;border-radius:12px;border:none;background:#F3F4F6;color:#111;font-size:14px">Închide</button>';
+ov.appendChild(bx);document.body.appendChild(ov);
+var q=function(s){return bx.querySelector(s)};
+bx.querySelectorAll("[data-w]").forEach(function(x){x.onclick=function(){sel=x.dataset.w;q("#pc").value="";bx.querySelectorAll("[data-w]").forEach(function(z){z.style.background=z===x?"#111827":"#fff";z.style.color=z===x?"#fff":"#111"})}});
+q("#pn").onclick=function(){ov.remove()};
+var url=function(){return DB+"/"+q("#pd").value+"/"+q("#pu").value+".json"};
+q("#ps").onclick=async function(){var w=q("#pc").value.trim()||sel;if(!q("#pd").value)return;
+await fetch(url(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true,workout:w})});location.reload()};
+q("#px").onclick=async function(){await fetch(url(),{method:"DELETE"});location.reload()};
+};
+})();
+</script>
+
 </body>
 </html>
