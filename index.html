@@ -34,6 +34,7 @@ async function rd(){try{const r=await fetch(FB+"/checkData.json");return r.ok?aw
 async function wr(key,uid,val){try{await fetch(FB+"/checkData/"+key+"/"+uid+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val)});}catch(e){}}
 function streak(D,u){let s=0;const d=new Date();if(!D[ds(d)]?.[u]?.done)d.setDate(d.getDate()-1);while(D[ds(d)]?.[u]?.done){s++;d.setDate(d.getDate()-1);}return s;}
 function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);if(yy===y&&mm===m+1&&D[k]?.[u]?.done){tot++;const w=D[k][u].workout||"Nespecificat";c[w]=(c[w]||0)+1;}});return {tot,c};}
+function niceDate(k){const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
 function App(){
 const [me,setMe]=useState(()=>localStorage.getItem("fb-me"));
 const [D,setD]=useState({});
@@ -45,6 +46,7 @@ const n0=new Date();
 const [vy,setVy]=useState(n0.getFullYear());
 const [vm,setVm]=useState(n0.getMonth());
 const [det,setDet]=useState(null);
+const [dOther,setDOther]=useState("");
 const [dk,setDk]=useState(window.matchMedia("(prefers-color-scheme: dark)").matches);
 useEffect(()=>{const load=()=>rd().then(d=>setD(d||{}));load();const i=setInterval(load,15000);return()=>clearInterval(i);},[]);
 const T=today();
@@ -60,6 +62,13 @@ setParty(true);setTimeout(()=>setParty(false),2200);
 const o=U.find(u=>u.id!==me);
 const ok=await tg(o.chat,user.emoji+" <b>"+user.name+"</b> a bifat sportul azi"+(w?" ("+w+")":"")+"! 💪\nHai că poți și tu! 🔥");
 say(ok?"✅ "+o.name+" a primit notificare":"✅ Sport bifat!");}
+async function setDay(k,w){
+setDet(null);setDOther("");
+if(k===T&&!done&&w!==null)return check(w);
+const val=w===null?null:{done:true,workout:w||""};
+setD({...D,[k]:{...(D[k]||{}),[me]:val}});
+await wr(k,me,val);
+say(val?"✅ Salvat":"↩️ Bifă ștearsă");}
 const bg=dk?"#0F0F0F":"#F9FAFB",card=dk?"#1C1C1E":"#fff",tx=dk?"#F9FAFB":"#111827",sub=dk?"#9CA3AF":"#6B7280",bd=dk?"#2C2C2E":"#E5E7EB",empty=dk?"#1C1C1E":"#F3F4F6";
 const isCur=vy===n0.getFullYear()&&vm===n0.getMonth();
 const go=s=>{const d=new Date(vy,vm+s,1);setVy(d.getFullYear());setVm(d.getMonth());};
@@ -69,6 +78,8 @@ const ms=me?monthStats(D,me,vy,vm):{tot:0,c:{}};
 const lbl={fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:sub,marginBottom:10};
 const wrap={maxWidth:480,margin:"0 auto",padding:"18px 20px 0"};
 const chip={padding:"8px 14px",borderRadius:20,border:"1.5px solid "+(user?user.color:bd),background:"transparent",color:tx,fontSize:13,fontWeight:600,fontFamily:"inherit"};
+const dm=det?(D[det]||{}):{};
+const mine=me?dm[me]:null;
 return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddingBottom:80}}>
 {party&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.75)",zIndex:200,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16}}><div className="dancer">💃</div><div style={{color:"#fff",fontSize:24,fontWeight:700,textAlign:"center"}}>Bravo! 🔥</div></div>}
 <div style={{background:card,borderBottom:"1px solid "+bd,position:"sticky",top:0,zIndex:10}}><div style={{maxWidth:480,margin:"0 auto",padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -99,58 +110,25 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
 {cellsFor(vy,vm).map((c,i)=>{if(!c)return <div key={i}/>;const m=D[c.key]||{};const a=m.madalina?.done,b=m.gabriela?.done;
 const back=c.fut?bg:a&&b?"linear-gradient(135deg,#C084FC,#FB923C)":a?U[0].color:b?U[1].color:empty;
-return <div key={c.key} onClick={()=>(a||b)&&setDet({key:c.key,m})} style={{aspectRatio:"1",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:back,border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
+return <div key={c.key} onClick={()=>{if(!c.fut){setDOther("");setDet(c.key);}}} style={{aspectRatio:"1",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:back,cursor:c.fut?"default":"pointer",border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
 <span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8}}>{a&&b?"🤝":a?U[0].emoji:b?U[1].emoji:""}</span></div>;})}
 </div>
 <div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub}}><span>❤️ Madalina</span><span>🤍 Gabriela</span><span>🤝 Amândouă</span></div></div>
 {det&&<div onClick={()=>setDet(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
 <div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:"20px 20px 0 0",padding:24,width:"100%",maxWidth:480,color:tx}}>
-<b>📅 {det.key}</b>
-{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{det.m[u.id]?.done?"✅ "+(det.m[u.id].workout||"sport"):"—"}</span></div>)}
-<button onClick={()=>setDet(null)} style={{width:"100%",marginTop:20,padding:12,borderRadius:12,border:"none",background:empty,color:tx,fontSize:15,fontWeight:600}}>Închide</button></div></div>}
+<b style={{textTransform:"capitalize"}}>📅 {niceDate(det)}</b>
+{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{dm[u.id]?.done?"✅ "+(dm[u.id].workout||"sport"):"—"}</span></div>)}
+{user&&<div style={{marginTop:18,paddingTop:16,borderTop:"1px solid "+bd}}>
+<div style={{fontSize:13,color:sub,marginBottom:10}}>{mine?.done?"Schimbă antrenamentul tău:":"Adaugă antrenamentul tău:"}</div>
+<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{WK.map(w=>{const on=mine?.done&&mine.workout===w;return <button key={w} onClick={()=>setDay(det,w)} style={{...chip,background:on?user.color:"transparent",color:on?"#fff":tx}}>{w}</button>;})}</div>
+<div style={{display:"flex",gap:8,marginTop:8}}><input value={dOther} onChange={e=>setDOther(e.target.value)} placeholder={mine?.done&&mine.workout&&!WK.includes(mine.workout)?mine.workout:"Altceva..."} style={{...chip,flex:1,background:card,outline:"none"}}/>
+{dOther&&<button onClick={()=>setDay(det,dOther)} style={{...chip,background:user.color,color:"#fff"}}>✓</button>}</div>
+{mine?.done&&<button onClick={()=>setDay(det,null)} style={{width:"100%",marginTop:14,padding:10,borderRadius:12,border:"none",background:"#FEE2E2",color:"#B91C1C",fontSize:14,fontWeight:600}}>Șterge bifa mea</button>}
+</div>}
+<button onClick={()=>setDet(null)} style={{width:"100%",marginTop:12,padding:12,borderRadius:12,border:"none",background:empty,color:tx,fontSize:15,fontWeight:600}}>Închide</button></div></div>}
 {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"#1F2937",color:"#fff",padding:"12px 24px",borderRadius:40,fontSize:14,fontWeight:600,zIndex:300,whiteSpace:"nowrap"}}>{toast}</div>}
 </div>);}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
-</script>
-<script>
-(function(){
-var DB="https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app/checkData";
-var W=["Full Body","Upper Body","Lower Body","Core"];
-function ds(x){return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0");}
-var S="padding:10px;border-radius:12px;border:1px solid #ccc;font-size:15px;width:100%;box-sizing:border-box;font-family:inherit";
-var b=document.createElement("button");b.textContent="📅";
-b.style.cssText="position:fixed;right:16px;bottom:90px;z-index:90;width:52px;height:52px;border-radius:50%;border:none;background:#111827;color:#fff;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,.3)";
-document.body.appendChild(b);
-b.onclick=async function(){
-var data=await fetch(DB+".json").then(function(r){return r.json()}).catch(function(){return null})||{};
-var ids={};for(var d in data)for(var u in data[d])ids[u]=1;ids=Object.keys(ids);
-var me=ids[0];try{for(var i=0;i<localStorage.length;i++){var v=localStorage.getItem(localStorage.key(i));if(ids.indexOf(v)>-1)me=v;}}catch(e){}
-var sel="";
-var ov=document.createElement("div");
-ov.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px";
-var bx=document.createElement("div");
-bx.style.cssText="background:#fff;color:#111;border-radius:18px;padding:20px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:10px;font-family:inherit";
-bx.innerHTML='<b style="font-size:17px">Adaugă / modifică antrenament</b>'+
-'<input id="pd" type="date" max="'+ds(new Date())+'" value="'+ds(new Date())+'" style="'+S+'">'+
-'<select id="pu" style="'+S+'">'+ids.map(function(i){return '<option value="'+i+'"'+(i===me?" selected":"")+'>'+i.charAt(0).toUpperCase()+i.slice(1)+'</option>'}).join("")+'</select>'+
-'<div id="pw" style="display:flex;flex-wrap:wrap;gap:8px">'+W.map(function(w){return '<button data-w="'+w+'" style="padding:8px 14px;border-radius:20px;border:1.5px solid #111;background:#fff;color:#111;font-size:13px;font-weight:600">'+w+'</button>'}).join("")+'</div>'+
-'<input id="pc" placeholder="Altceva..." style="'+S+'">'+
-'<button id="ps" style="padding:12px;border-radius:12px;border:none;background:#111827;color:#fff;font-size:15px;font-weight:600">Salvează</button>'+
-'<button id="px" style="padding:10px;border-radius:12px;border:none;background:#FEE2E2;color:#B91C1C;font-size:14px">Șterge bifa din ziua aleasă</button>'+
-'<button id="pn" style="padding:10px;border-radius:12px;border:none;background:#F3F4F6;color:#111;font-size:14px">Închide</button>';
-ov.appendChild(bx);document.body.appendChild(ov);
-var q=function(s){return bx.querySelector(s)};
-var paint=function(){bx.querySelectorAll("[data-w]").forEach(function(z){var on=z.dataset.w===sel;z.style.background=on?"#111827":"#fff";z.style.color=on?"#fff":"#111"})};
-bx.querySelectorAll("[data-w]").forEach(function(x){x.onclick=function(){sel=x.dataset.w;q("#pc").value="";paint()}});
-var pf=function(){var e=(data[q("#pd").value]||{})[q("#pu").value];var w=e&&e.done?(e.workout||""):"";sel=W.indexOf(w)>-1?w:"";q("#pc").value=sel?"":w;paint()};
-q("#pd").onchange=pf;q("#pu").onchange=pf;pf();
-q("#pn").onclick=function(){ov.remove()};
-var url=function(){return DB+"/"+q("#pd").value+"/"+q("#pu").value+".json"};
-q("#ps").onclick=async function(){var w=q("#pc").value.trim()||sel;if(!q("#pd").value)return;
-await fetch(url(),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true,workout:w})});location.reload()};
-q("#px").onclick=async function(){await fetch(url(),{method:"DELETE"});location.reload()};
-};
-})();
 </script>
 </body>
 </html>
