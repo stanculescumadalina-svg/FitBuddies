@@ -16,7 +16,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-  (async()=>{try{const raw=localStorage.getItem("fitness-buddies-v1");if(!raw||localStorage.getItem("fb-migrated"))return;const old=JSON.parse(raw);for(const day in old){for(const uid in old[day]){const v=old[day][uid];if(v===true||(v&&v.done)){await fetch("https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app/checkData/"+day+"/"+uid+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true,workout:(v&&v.workout)||""})});}}}localStorage.setItem("fb-migrated","1");}catch(e){}})();
+(async()=>{try{const raw=localStorage.getItem("fitness-buddies-v1");if(!raw||localStorage.getItem("fb-migrated"))return;const old=JSON.parse(raw);for(const day in old){for(const uid in old[day]){const v=old[day][uid];if(v===true||(v&&v.done)){await fetch("https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app/checkData/"+day+"/"+uid+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({done:true,workout:(v&&v.workout)||""})});}}}localStorage.setItem("fb-migrated","1");}catch(e){}})();
 const {useState,useEffect}=React;
 const FB="https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app";
 const TG="8864998845:AAHxHXLpm0VRXaM6gCNLoN21LGe8zmPAcIc";
@@ -24,6 +24,7 @@ const U=[
 {id:"madalina",name:"Madalina",emoji:"❤️",color:"#C084FC",light:"#F3E8FF",dark:"#3B1F5E",chat:"1544444861"},
 {id:"gabriela",name:"Gabriela",emoji:"🤍",color:"#FB923C",light:"#FFF7ED",dark:"#3D1F0A",chat:"5484205376"}];
 const WK=["Full Body","Upper Body","Lower Body","Core"];
+const WALK="Walking";
 const DOW=["L","M","M","J","V","S","D"];
 const pad=n=>String(n).padStart(2,"0");
 const ds=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -32,52 +33,77 @@ function cellsFor(y,m){const t=new Date();t.setHours(0,0,0,0);const n=new Date(y
 async function tg(chat,text){try{const r=await fetch("https://api.telegram.org/bot"+TG+"/sendMessage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:chat,text,parse_mode:"HTML"})});return r.ok;}catch(e){return false;}}
 async function rd(){try{const r=await fetch(FB+"/checkData.json");return r.ok?await r.json():null;}catch(e){return null;}}
 async function wr(key,uid,val){try{await fetch(FB+"/checkData/"+key+"/"+uid+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(val)});}catch(e){}}
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+// lista de antrenamente dintr-o intrare (compatibil cu intrările vechi)
+const wl=e=>!e||!e.done?[]:Array.isArray(e.workouts)?e.workouts:(e.workout?[e.workout]:[]);
+const walked=e=>wl(e).includes(WALK);
+const stepsOf=e=>walked(e)&&e.steps?Number(e.steps):0;
+const stepColor=s=>s>10000?"#F59E0B":s>=5000?"#22C55E":"#BFDBFE";
+const fmtN=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,".");
+const fmtK=s=>{if(!s)return "0";if(s<1000)return String(s);if(s>=10000)return Math.round(s/1000)+"k";const v=Math.round(s/100)/10;return String(v).replace(".",",")+"k";};
+const labelOf=e=>wl(e).map(w=>w===WALK?"🦶 Walking"+(stepsOf(e)?" · "+fmtN(stepsOf(e))+" pași":""):w).join(" + ");
+const plainOf=e=>wl(e).map(w=>w===WALK?"Walking"+(stepsOf(e)?" – "+fmtN(stepsOf(e))+" pași":""):w).join(" + ");
 function streak(D,u){let s=0;const d=new Date();if(!D[ds(d)]?.[u]?.done)d.setDate(d.getDate()-1);while(D[ds(d)]?.[u]?.done){s++;d.setDate(d.getDate()-1);}return s;}
-function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);if(yy===y&&mm===m+1&&D[k]?.[u]?.done){tot++;const w=D[k][u].workout||"Nespecificat";c[w]=(c[w]||0)+1;}});return {tot,c};}
+function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);const e=D[k]?.[u];if(yy===y&&mm===m+1&&e?.done){tot++;const ws=wl(e);(ws.length?ws:["Nespecificat"]).forEach(w=>{c[w]=(c[w]||0)+1;});}});return {tot,c};}
+function weekSteps(D,u){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);let s=0;for(let i=0;i<7;i++){s+=stepsOf(D[ds(d)]?.[u]);d.setDate(d.getDate()+1);}return s;}
 function niceDate(k){const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
+function Foot({s}){return <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+<span style={{width:16,height:16,borderRadius:"50%",background:stepColor(s),border:"1.5px solid #fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,lineHeight:1}}>🦶</span>
+{s>0&&<span style={{fontSize:7.5,fontWeight:700,lineHeight:1.2,letterSpacing:"-.02em"}}>{fmtK(s)}</span>}</div>;}
 function App(){
 const [me,setMe]=useState(()=>localStorage.getItem("fb-me"));
 const [D,setD]=useState({});
 const [toast,setToast]=useState(null);
 const [pick,setPick]=useState(false);
-const [other,setOther]=useState("");
 const [party,setParty]=useState(false);
 const n0=new Date();
 const [vy,setVy]=useState(n0.getFullYear());
 const [vm,setVm]=useState(n0.getMonth());
 const [det,setDet]=useState(null);
-const [dOther,setDOther]=useState("");
+const [sel,setSel]=useState([]);
+const [oth,setOth]=useState("");
+const [stp,setStp]=useState("");
 const [dk,setDk]=useState(window.matchMedia("(prefers-color-scheme: dark)").matches);
 useEffect(()=>{const load=()=>rd().then(d=>setD(d||{}));load();const i=setInterval(load,15000);return()=>clearInterval(i);},[]);
 const T=today();
 const user=U.find(u=>u.id===me);
 const done=me&&D[T]?.[me]?.done;
 const say=m=>{setToast(m);setTimeout(()=>setToast(null),3500);};
-async function check(w){
-const nd={...D,[T]:{...(D[T]||{}),[me]:done?null:{done:true,workout:w||""}}};
-setD(nd);setPick(false);setOther("");
-await wr(T,me,done?null:{done:true,workout:w||""});
-if(done){say("↩️ Zi debifată");return;}
+function prefill(e){const ws=wl(e);setSel(ws.filter(w=>WK.includes(w)||w===WALK));setOth(ws.filter(w=>!WK.includes(w)&&w!==WALK)[0]||"");setStp(e&&e.steps?String(e.steps):"");}
+function openToday(){prefill(null);setPick(true);}
+function openDay(k){prefill(D[k]?.[me]);setDet(k);}
+function makeVal(){const ws=[...WK,WALK].filter(w=>sel.includes(w));if(oth.trim())ws.push(oth.trim());if(!ws.length)return null;const st=sel.includes(WALK)?(parseInt(stp,10)||0):0;return {done:true,workouts:ws,workout:ws.join(" + "),steps:st};}
+async function commit(k,v){
+const was=!!D[k]?.[me]?.done;
+setD(p=>({...p,[k]:{...(p[k]||{}),[me]:v}}));
+setDet(null);setPick(false);
+await wr(k,me,v);
+if(!v){say(k===T?"↩️ Zi debifată":"↩️ Bifă ștearsă");return;}
+if(k===T&&!was){
 setParty(true);setTimeout(()=>setParty(false),2200);
 const o=U.find(u=>u.id!==me);
-const ok=await tg(o.chat,user.emoji+" <b>"+user.name+"</b> a bifat sportul azi"+(w?" ("+w+")":"")+"! 💪\nHai că poți și tu! 🔥");
-say(ok?"✅ "+o.name+" a primit notificare":"✅ Sport bifat!");}
-async function setDay(k,w){
-setDet(null);setDOther("");
-if(k===T&&!done&&w!==null)return check(w);
-const val=w===null?null:{done:true,workout:w||""};
-setD({...D,[k]:{...(D[k]||{}),[me]:val}});
-await wr(k,me,val);
-say(val?"✅ Salvat":"↩️ Bifă ștearsă");}
+const ok=await tg(o.chat,user.emoji+" <b>"+user.name+"</b> a bifat sportul azi ("+esc(plainOf(v))+")! 💪\nHai că poți și tu! 🔥");
+say(ok?"✅ "+o.name+" a primit notificare":"✅ Sport bifat!");return;}
+say("✅ Salvat");}
 const bg=dk?"#0F0F0F":"#F9FAFB",card=dk?"#1C1C1E":"#fff",tx=dk?"#F9FAFB":"#111827",sub=dk?"#9CA3AF":"#6B7280",bd=dk?"#2C2C2E":"#E5E7EB",empty=dk?"#1C1C1E":"#F3F4F6";
 const isCur=vy===n0.getFullYear()&&vm===n0.getMonth();
 const go=s=>{const d=new Date(vy,vm+s,1);setVy(d.getFullYear());setVm(d.getMonth());};
 const label=new Date(vy,vm,1).toLocaleString("ro-RO",{month:"long",year:"numeric"});
 const st=me?streak(D,me):0;
 const ms=me?monthStats(D,me,vy,vm):{tot:0,c:{}};
+const wk=U.map(u=>({u,s:weekSteps(D,u.id)}));
+const wkAny=wk.some(x=>x.s>0);
 const lbl={fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:sub,marginBottom:10};
 const wrap={maxWidth:480,margin:"0 auto",padding:"18px 20px 0"};
 const chip={padding:"8px 14px",borderRadius:20,border:"1.5px solid "+(user?user.color:bd),background:"transparent",color:tx,fontSize:13,fontWeight:600,fontFamily:"inherit"};
+const field={...chip,background:card,outline:"none",fontSize:16,fontWeight:500,width:"100%"};
+const can=sel.length>0||oth.trim().length>0;
+const picker=(onSave)=>(<div style={{display:"flex",flexDirection:"column",gap:10}}>
+<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{[...WK,WALK].map(w=>{const on=sel.includes(w);return <button key={w} onClick={()=>setSel(on?sel.filter(x=>x!==w):[...sel,w])} style={{...chip,background:on?user.color:"transparent",color:on?"#fff":tx}}>{w===WALK?"🦶 Walking":w}</button>;})}</div>
+{sel.includes(WALK)&&<input value={stp} onChange={e=>setStp(e.target.value.replace(/\D/g,"").slice(0,6))} type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Câți pași? (ex: 8200)" style={field}/>}
+<input value={oth} onChange={e=>setOth(e.target.value)} placeholder="Altceva..." style={field}/>
+<button disabled={!can} onClick={onSave} style={{padding:"12px 0",borderRadius:14,border:"none",color:"#fff",fontSize:15,fontWeight:700,fontFamily:"inherit",background:can?user.color:"#9CA3AF"}}>Salvează</button>
+</div>);
 const dm=det?(D[det]||{}):{};
 const mine=me?dm[me]:null;
 return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddingBottom:80}}>
@@ -93,16 +119,16 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 <div style={{color:tx}}><b style={{fontSize:18}}>{user.emoji} {user.name}</b>
 <div style={{fontSize:13,color:sub,marginTop:4}}>🔥 {st} zile la rând · 📅 {ms.tot} luna asta</div>
 {st>=2&&<div style={{fontSize:Math.min(16+st*3,40),marginTop:6}}>{"🔥".repeat(Math.min(st,7))}</div>}</div>
-{done&&D[T][me].workout&&<div style={{fontSize:14,color:tx}}>💪 {D[T][me].workout}</div>}
-{pick&&!done&&<div style={{display:"flex",flexDirection:"column",gap:8}}>
-<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{WK.map(w=><button key={w} onClick={()=>check(w)} style={chip}>{w}</button>)}</div>
-<div style={{display:"flex",gap:8}}><input value={other} onChange={e=>setOther(e.target.value)} placeholder="Altceva..." style={{...chip,flex:1,background:card,outline:"none"}}/>
-{other&&<button onClick={()=>check(other)} style={{...chip,background:user.color,color:"#fff"}}>✓</button>}</div></div>}
-{!pick&&<button onClick={()=>done?check(null):setPick(true)} style={{padding:"14px 0",borderRadius:14,border:"none",color:"#fff",fontSize:16,fontWeight:700,fontFamily:"inherit",background:done?"#6B7280":user.color}}>{done?"✓ Bifat azi — anulează":"✅ Am făcut sport azi!"}</button>}
+{done&&wl(D[T][me]).length>0&&<div style={{fontSize:14,color:tx}}>💪 {labelOf(D[T][me])}</div>}
+{pick&&!done&&<>{picker(()=>{const v=makeVal();if(v)commit(T,v);})}
+<button onClick={()=>setPick(false)} style={{background:"none",border:"none",color:sub,fontSize:14,fontFamily:"inherit"}}>Renunță</button></>}
+{!pick&&<button onClick={()=>done?commit(T,null):openToday()} style={{padding:"14px 0",borderRadius:14,border:"none",color:"#fff",fontSize:16,fontWeight:700,fontFamily:"inherit",background:done?"#6B7280":user.color}}>{done?"✓ Bifat azi — anulează":"✅ Am făcut sport azi!"}</button>}
 </div></div>}
 {user&&ms.tot>0&&<div style={wrap}><p style={lbl}>Statistici {label}</p><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-{Object.entries(ms.c).map(([w,c])=><div key={w} style={{background:card,border:"1px solid "+bd,borderRadius:12,padding:"8px 14px",fontSize:13,color:tx}}><b style={{color:user.color}}>{c}x</b> {w}</div>)}</div></div>}
-<div style={wrap}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+{Object.entries(ms.c).map(([w,c])=><div key={w} style={{background:card,border:"1px solid "+bd,borderRadius:12,padding:"8px 14px",fontSize:13,color:tx}}><b style={{color:user.color}}>{c}x</b> {w===WALK?"🦶 Walking":w}</div>)}</div></div>}
+<div style={wrap}>
+{wkAny&&<div style={{fontSize:12,color:sub,marginBottom:10,textAlign:"center"}}>Săptămâna asta: {wk.map(x=>x.u.name+" "+fmtK(x.s)).join(" · ")}</div>}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
 <button onClick={()=>go(-1)} style={{background:"none",border:"1px solid "+bd,borderRadius:10,padding:"6px 14px",fontSize:20,color:tx}}>‹</button>
 <b style={{fontSize:14,color:tx,textTransform:"capitalize"}}>{label}</b>
 <button onClick={()=>!isCur&&go(1)} style={{background:"none",border:"1px solid "+bd,borderRadius:10,padding:"6px 14px",fontSize:20,color:tx,opacity:isCur?.2:1}}>›</button></div>
@@ -110,22 +136,25 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
 {cellsFor(vy,vm).map((c,i)=>{if(!c)return <div key={i}/>;const m=D[c.key]||{};const a=m.madalina?.done,b=m.gabriela?.done;
 const back=c.fut?bg:a&&b?"linear-gradient(135deg,#C084FC,#FB923C)":a?U[0].color:b?U[1].color:empty;
-return <div key={c.key} onClick={()=>{if(!c.fut){setDOther("");setDet(c.key);}}} style={{aspectRatio:"1",borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",background:back,cursor:c.fut?"default":"pointer",border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
-<span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8}}>{a&&b?"🤝":a?U[0].emoji:b?U[1].emoji:""}</span></div>;})}
+const feet=U.filter(u=>walked(m[u.id]));
+return <div key={c.key} onClick={()=>!c.fut&&me&&openDay(c.key)} style={{minHeight:60,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:5,gap:1,overflow:"hidden",background:back,border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
+<span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8,minHeight:10}}>{a&&b?"🤝":a?U[0].emoji:b?U[1].emoji:""}</span>
+{feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={stepsOf(m[u.id])}/>)}</div>}</div>;})}
 </div>
-<div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub}}><span>❤️ Madalina</span><span>🤍 Gabriela</span><span>🤝 Amândouă</span></div></div>
+<div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub,flexWrap:"wrap"}}><span>❤️ Madalina</span><span>🤍 Gabriela</span><span>🤝 Amândouă</span></div>
+<div style={{display:"flex",gap:12,marginTop:8,fontSize:12,color:sub,alignItems:"center",flexWrap:"wrap"}}>🦶
+{[[0,"sub 5k"],[5000,"5–10k"],[10001,"peste 10k"]].map(([s,t])=><span key={t} style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:10,height:10,borderRadius:"50%",background:stepColor(s),display:"inline-block"}}/>{t}</span>)}</div>
+</div>
 {det&&<div onClick={()=>setDet(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-<div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:"20px 20px 0 0",padding:24,width:"100%",maxWidth:480,color:tx}}>
+<div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:"20px 20px 0 0",padding:24,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",color:tx}}>
 <b style={{textTransform:"capitalize"}}>📅 {niceDate(det)}</b>
-{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{dm[u.id]?.done?"✅ "+(dm[u.id].workout||"sport"):"—"}</span></div>)}
+{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{dm[u.id]?.done?"✅ "+(labelOf(dm[u.id])||"sport"):"—"}</span></div>)}
 {user&&<div style={{marginTop:18,paddingTop:16,borderTop:"1px solid "+bd}}>
 <div style={{fontSize:13,color:sub,marginBottom:10}}>{mine?.done?"Schimbă antrenamentul tău:":"Adaugă antrenamentul tău:"}</div>
-<div style={{display:"flex",flexWrap:"wrap",gap:8}}>{WK.map(w=>{const on=mine?.done&&mine.workout===w;return <button key={w} onClick={()=>setDay(det,w)} style={{...chip,background:on?user.color:"transparent",color:on?"#fff":tx}}>{w}</button>;})}</div>
-<div style={{display:"flex",gap:8,marginTop:8}}><input value={dOther} onChange={e=>setDOther(e.target.value)} placeholder={mine?.done&&mine.workout&&!WK.includes(mine.workout)?mine.workout:"Altceva..."} style={{...chip,flex:1,background:card,outline:"none"}}/>
-{dOther&&<button onClick={()=>setDay(det,dOther)} style={{...chip,background:user.color,color:"#fff"}}>✓</button>}</div>
-{mine?.done&&<button onClick={()=>setDay(det,null)} style={{width:"100%",marginTop:14,padding:10,borderRadius:12,border:"none",background:"#FEE2E2",color:"#B91C1C",fontSize:14,fontWeight:600}}>Șterge bifa mea</button>}
+{picker(()=>{const v=makeVal();if(v)commit(det,v);})}
+{mine?.done&&<button onClick={()=>commit(det,null)} style={{width:"100%",marginTop:12,padding:10,borderRadius:12,border:"none",background:"#FEE2E2",color:"#B91C1C",fontSize:14,fontWeight:600,fontFamily:"inherit"}}>Șterge bifa mea</button>}
 </div>}
-<button onClick={()=>setDet(null)} style={{width:"100%",marginTop:12,padding:12,borderRadius:12,border:"none",background:empty,color:tx,fontSize:15,fontWeight:600}}>Închide</button></div></div>}
+<button onClick={()=>setDet(null)} style={{width:"100%",marginTop:12,padding:12,borderRadius:12,border:"none",background:empty,color:tx,fontSize:15,fontWeight:600,fontFamily:"inherit"}}>Închide</button></div></div>}
 {toast&&<div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",background:"#1F2937",color:"#fff",padding:"12px 24px",borderRadius:40,fontSize:14,fontWeight:600,zIndex:300,whiteSpace:"nowrap"}}>{toast}</div>}
 </div>);}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
