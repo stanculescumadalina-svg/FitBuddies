@@ -21,7 +21,7 @@ const {useState,useEffect}=React;
 const FB="https://fit-buddies-c2d65-default-rtdb.europe-west1.firebasedatabase.app";
 const TG="8864998845:AAHxHXLpm0VRXaM6gCNLoN21LGe8zmPAcIc";
 const U=[
-{id:"madalina",name:"Madalina",emoji:"❤️",color:"#C084FC",light:"#F3E8FF",dark:"#3B1F5E",chat:"1544444861"},
+{id:"madalina",name:"Madalina",emoji:"❤️",ring:"#E11D2E",color:"#C084FC",light:"#F3E8FF",dark:"#3B1F5E",chat:"1544444861"},
 {id:"gabriela",name:"Gabriela",emoji:"🤍",color:"#FB923C",light:"#FFF7ED",dark:"#3D1F0A",chat:"5484205376"}];
 const WK=["Full Body","Upper Body","Lower Body","Core"];
 const WALK="Walking";
@@ -47,8 +47,8 @@ function streak(D,u){let s=0;const d=new Date();if(!D[ds(d)]?.[u]?.done)d.setDat
 function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);const e=D[k]?.[u];if(yy===y&&mm===m+1&&e?.done){tot++;const ws=wl(e);(ws.length?ws:["Nespecificat"]).forEach(w=>{c[w]=(c[w]||0)+1;});}});return {tot,c};}
 function weekSteps(D,u){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);let s=0;for(let i=0;i<7;i++){s+=stepsOf(D[ds(d)]?.[u]);d.setDate(d.getDate()+1);}return s;}
 function niceDate(k){const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
-function Foot({s}){return <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-<span style={{width:16,height:16,borderRadius:"50%",background:stepColor(s),border:"1.5px solid #fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,lineHeight:1}}>🦶</span>
+function Foot({s,ring}){return <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+<span style={{width:16,height:16,borderRadius:"50%",background:stepColor(s),border:"1.5px solid "+(ring||"#fff"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,lineHeight:1}}>🦶</span>
 {s>0&&<span style={{fontSize:7.5,fontWeight:700,lineHeight:1.2,letterSpacing:"-.02em"}}>{fmtK(s)}</span>}</div>;}
 function App(){
 const [me,setMe]=useState(()=>localStorage.getItem("fb-me"));
@@ -139,7 +139,7 @@ const back=c.fut?bg:a&&b?"linear-gradient(135deg,#C084FC,#FB923C)":a?U[0].color:
 const feet=U.filter(u=>walked(m[u.id]));
 return <div key={c.key} onClick={()=>!c.fut&&me&&openDay(c.key)} style={{minHeight:60,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:5,gap:1,overflow:"hidden",background:back,border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
 <span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8,minHeight:10}}>{(a?U[0].emoji:"")+(b?U[1].emoji:"")}</span>
-{feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={stepsOf(m[u.id])}/>)}</div>}</div>;})}
+{feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={stepsOf(m[u.id])} ring={u.ring}/>)}</div>}</div>;})}
 </div>
 <div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub,flexWrap:"wrap"}}><span>❤️ Madalina</span><span>🤍 Gabriela</span></div>
 <div style={{display:"flex",gap:12,marginTop:8,fontSize:12,color:sub,alignItems:"center",flexWrap:"wrap"}}>🦶
