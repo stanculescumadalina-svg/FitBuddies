@@ -138,10 +138,10 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 const back=c.fut?bg:a&&b?"linear-gradient(135deg,#C084FC,#FB923C)":a?U[0].color:b?U[1].color:empty;
 const feet=U.filter(u=>walked(m[u.id]));
 return <div key={c.key} onClick={()=>!c.fut&&me&&openDay(c.key)} style={{minHeight:60,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:5,gap:1,overflow:"hidden",background:back,border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
-<span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8,minHeight:10}}>{a&&b?"🤝":a?U[0].emoji:b?U[1].emoji:""}</span>
+<span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8,minHeight:10}}>{(a?U[0].emoji:"")+(b?U[1].emoji:"")}</span>
 {feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={stepsOf(m[u.id])}/>)}</div>}</div>;})}
 </div>
-<div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub,flexWrap:"wrap"}}><span>❤️ Madalina</span><span>🤍 Gabriela</span><span>🤝 Amândouă</span></div>
+<div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub,flexWrap:"wrap"}}><span>❤️ Madalina</span><span>🤍 Gabriela</span></div>
 <div style={{display:"flex",gap:12,marginTop:8,fontSize:12,color:sub,alignItems:"center",flexWrap:"wrap"}}>🦶
 {[[0,"sub 5k"],[5000,"5–10k"],[10001,"peste 10k"]].map(([s,t])=><span key={t} style={{display:"flex",alignItems:"center",gap:4}}><span style={{width:10,height:10,borderRadius:"50%",background:stepColor(s),display:"inline-block"}}/>{t}</span>)}</div>
 </div>
