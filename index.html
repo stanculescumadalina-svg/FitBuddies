@@ -43,9 +43,11 @@ const fmtN=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,".");
 const fmtK=s=>{if(!s)return "0";if(s<1000)return String(s);if(s>=10000)return Math.round(s/1000)+"k";const v=Math.round(s/100)/10;return String(v).replace(".",",")+"k";};
 const labelOf=e=>wl(e).map(w=>w===WALK?"🦶 Walking"+(stepsOf(e)?" · "+fmtN(stepsOf(e))+" pași":""):w).join(" + ");
 const plainOf=e=>wl(e).map(w=>w===WALK?"Walking"+(stepsOf(e)?" – "+fmtN(stepsOf(e))+" pași":""):w).join(" + ");
-function streak(D,u){let s=0;const d=new Date();if(!D[ds(d)]?.[u]?.done)d.setDate(d.getDate()-1);while(D[ds(d)]?.[u]?.done){s++;d.setDate(d.getDate()-1);}return s;}
-function monthStats(D,u,y,m){const c={};let tot=0;Object.keys(D).forEach(k=>{const [yy,mm]=k.split("-").map(Number);const e=D[k]?.[u];if(yy===y&&mm===m+1&&e?.done){tot++;const ws=wl(e);(ws.length?ws:["Nespecificat"]).forEach(w=>{c[w]=(c[w]||0)+1;});}});return {tot,c};}
-function weekSteps(D,u){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);let s=0;for(let i=0;i<7;i++){s+=stepsOf(D[ds(d)]?.[u]);d.setDate(d.getDate()+1);}return s;}
+const MIN=8000;
+function weekWorkouts(D,u){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);let n=0;for(let i=0;i<7;i++){if(wl(D[ds(d)]?.[u]).some(w=>w!==WALK))n++;d.setDate(d.getDate()+1);}return n;}
+function streak(dn,u){let s=0;const d=new Date();if(!dn(ds(d),u))d.setDate(d.getDate()-1);while(dn(ds(d),u)){s++;d.setDate(d.getDate()-1);}return s;}
+function monthStats(D,S,dn,au,u,y,m){const c={};let tot=0;new Set([...Object.keys(D),...Object.keys(S)]).forEach(k=>{const [yy,mm]=k.split("-").map(Number);if(yy!==y||mm!==m+1||!dn(k,u))return;tot++;let ws=wl(D[k]?.[u]);if(au(k,u)>=MIN&&!ws.includes(WALK))ws=[...ws,WALK];(ws.length?ws:["Nespecificat"]).forEach(w=>{c[w]=(c[w]||0)+1;});});return {tot,c};}
+function weekSteps(sOf,u){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-(d.getDay()+6)%7);let s=0;for(let i=0;i<7;i++){s+=sOf(ds(d),u);d.setDate(d.getDate()+1);}return s;}
 function niceDate(k){const [y,m,d]=k.split("-").map(Number);return new Date(y,m-1,d).toLocaleDateString("ro-RO",{weekday:"long",day:"numeric",month:"long"});}
 function Foot({s,ring}){return <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
 <span style={{width:16,height:16,borderRadius:"50%",background:stepColor(s),border:"1.5px solid "+(ring||"#fff"),display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,lineHeight:1}}>🦶</span>
@@ -53,6 +55,7 @@ function Foot({s,ring}){return <div style={{display:"flex",flexDirection:"column
 function App(){
 const [me,setMe]=useState(()=>localStorage.getItem("fb-me"));
 const [D,setD]=useState({});
+const [S,setS]=useState({});
 const [toast,setToast]=useState(null);
 const [pick,setPick]=useState(false);
 const [party,setParty]=useState(false);
@@ -64,7 +67,7 @@ const [sel,setSel]=useState([]);
 const [oth,setOth]=useState("");
 const [stp,setStp]=useState("");
 const [dk,setDk]=useState(window.matchMedia("(prefers-color-scheme: dark)").matches);
-useEffect(()=>{const load=()=>rd().then(d=>setD(d||{}));load();const i=setInterval(load,15000);return()=>clearInterval(i);},[]);
+useEffect(()=>{const load=()=>{rd().then(d=>setD(d||{}));fetch(FB+"/steps.json").then(r=>r.ok?r.json():null).then(d=>setS(d||{})).catch(()=>{});};load();const i=setInterval(load,15000);return()=>clearInterval(i);},[]);
 const T=today();
 const user=U.find(u=>u.id===me);
 const done=me&&D[T]?.[me]?.done;
@@ -89,10 +92,16 @@ const bg=dk?"#0F0F0F":"#F9FAFB",card=dk?"#1C1C1E":"#fff",tx=dk?"#F9FAFB":"#11182
 const isCur=vy===n0.getFullYear()&&vm===n0.getMonth();
 const go=s=>{const d=new Date(vy,vm+s,1);setVy(d.getFullYear());setVm(d.getMonth());};
 const label=new Date(vy,vm,1).toLocaleString("ro-RO",{month:"long",year:"numeric"});
-const st=me?streak(D,me):0;
-const ms=me?monthStats(D,me,vy,vm):{tot:0,c:{}};
-const wk=U.map(u=>({u,s:weekSteps(D,u.id)}));
+const au=(k,u)=>Number(S[k]?.[u]?.n)||0;
+const sOf=(k,u)=>Math.max(stepsOf(D[k]?.[u]),au(k,u));
+const dn=(k,u)=>!!D[k]?.[u]?.done||au(k,u)>=MIN;
+const full=(k,u)=>{const e=D[k]?.[u];const n=sOf(k,u);const parts=wl(e).filter(w=>w!==WALK);if(walked(e)||n>=MIN)parts.push("🦶 Walking"+(n?" · "+fmtN(n)+" pași":""));else if(n>0)parts.push("🦶 "+fmtN(n)+" pași");return parts.join(" + ");};
+const st=me?streak(dn,me):0;
+const ms=me?monthStats(D,S,dn,au,me,vy,vm):{tot:0,c:{}};
+const wk=U.map(u=>({u,s:weekSteps(sOf,u.id)}));
 const wkAny=wk.some(x=>x.s>0);
+const ww=U.map(u=>({u,n:weekWorkouts(D,u.id)}));
+const wwAny=ww.some(x=>x.n>0);
 const lbl={fontSize:12,fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:sub,marginBottom:10};
 const wrap={maxWidth:480,margin:"0 auto",padding:"18px 20px 0"};
 const chip={padding:"8px 14px",borderRadius:20,border:"1.5px solid "+(user?user.color:bd),background:"transparent",color:tx,fontSize:13,fontWeight:600,fontFamily:"inherit"};
@@ -120,6 +129,7 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 <div style={{fontSize:13,color:sub,marginTop:4}}>🔥 {st} zile la rând · 📅 {ms.tot} luna asta</div>
 {st>=2&&<div style={{fontSize:Math.min(16+st*3,40),marginTop:6}}>{"🔥".repeat(Math.min(st,7))}</div>}</div>
 {done&&wl(D[T][me]).length>0&&<div style={{fontSize:14,color:tx}}>💪 {labelOf(D[T][me])}</div>}
+{au(T,me)>0&&<div style={{fontSize:14,color:tx}}>🦶 {fmtN(au(T,me))} pași azi din Health{au(T,me)>=MIN?" ✅":""}</div>}
 {pick&&!done&&<>{picker(()=>{const v=makeVal();if(v)commit(T,v);})}
 <button onClick={()=>setPick(false)} style={{background:"none",border:"none",color:sub,fontSize:14,fontFamily:"inherit"}}>Renunță</button></>}
 {!pick&&<button onClick={()=>done?commit(T,null):openToday()} style={{padding:"14px 0",borderRadius:14,border:"none",color:"#fff",fontSize:16,fontWeight:700,fontFamily:"inherit",background:done?"#6B7280":user.color}}>{done?"✓ Bifat azi — anulează":"✅ Am făcut sport azi!"}</button>}
@@ -127,19 +137,20 @@ return(<div style={{minHeight:"100vh",background:bg,fontFamily:"system-ui",paddi
 {user&&ms.tot>0&&<div style={wrap}><p style={lbl}>Statistici {label}</p><div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
 {Object.entries(ms.c).map(([w,c])=><div key={w} style={{background:card,border:"1px solid "+bd,borderRadius:12,padding:"8px 14px",fontSize:13,color:tx}}><b style={{color:user.color}}>{c}x</b> {w===WALK?"🦶 Walking":w}</div>)}</div></div>}
 <div style={wrap}>
-{wkAny&&<div style={{fontSize:12,color:sub,marginBottom:10,textAlign:"center"}}>Săptămâna asta: {wk.map(x=>x.u.name+" "+fmtK(x.s)).join(" · ")}</div>}
+{wkAny&&<div style={{fontSize:12,color:sub,marginBottom:wwAny?4:10,textAlign:"center"}}>Săptămâna asta: {wk.map(x=>x.u.name+" "+fmtK(x.s)).join(" · ")}</div>}
+{wwAny&&<div style={{fontSize:12,color:sub,marginBottom:10,textAlign:"center"}}>Workouts: {ww.map(x=>x.u.name+" "+x.n).join(" · ")}</div>}
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
 <button onClick={()=>go(-1)} style={{background:"none",border:"1px solid "+bd,borderRadius:10,padding:"6px 14px",fontSize:20,color:tx}}>‹</button>
 <b style={{fontSize:14,color:tx,textTransform:"capitalize"}}>{label}</b>
 <button onClick={()=>!isCur&&go(1)} style={{background:"none",border:"1px solid "+bd,borderRadius:10,padding:"6px 14px",fontSize:20,color:tx,opacity:isCur?.2:1}}>›</button></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:4}}>{DOW.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:11,fontWeight:600,color:sub}}>{d}</div>)}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4}}>
-{cellsFor(vy,vm).map((c,i)=>{if(!c)return <div key={i}/>;const m=D[c.key]||{};const a=m.madalina?.done,b=m.gabriela?.done;
+{cellsFor(vy,vm).map((c,i)=>{if(!c)return <div key={i}/>;const m=D[c.key]||{};const a=dn(c.key,"madalina"),b=dn(c.key,"gabriela");
 const back=c.fut?bg:a&&b?"linear-gradient(135deg,#C084FC,#FB923C)":a?U[0].color:b?U[1].color:empty;
-const feet=U.filter(u=>walked(m[u.id]));
+const feet=U.filter(u=>walked(m[u.id])||sOf(c.key,u.id)>0);
 return <div key={c.key} onClick={()=>!c.fut&&me&&openDay(c.key)} style={{minHeight:60,borderRadius:10,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",paddingTop:5,gap:1,overflow:"hidden",background:back,border:c.tod?"2px solid #6366F1":"2px solid transparent",color:(a||b)?"#fff":c.fut?"#9CA3AF":tx}}>
 <span style={{fontSize:11,fontWeight:600}}>{c.day}</span><span style={{fontSize:8,minHeight:10}}>{(a?U[0].emoji:"")+(b?U[1].emoji:"")}</span>
-{feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={stepsOf(m[u.id])} ring={u.ring}/>)}</div>}</div>;})}
+{feet.length>0&&<div style={{display:"flex",gap:1}}>{feet.map(u=><Foot key={u.id} s={sOf(c.key,u.id)} ring={u.ring}/>)}</div>}</div>;})}
 </div>
 <div style={{display:"flex",gap:16,marginTop:12,fontSize:12,color:sub,flexWrap:"wrap"}}><span>❤️ Madalina</span><span>🤍 Gabriela</span></div>
 <div style={{display:"flex",gap:12,marginTop:8,fontSize:12,color:sub,alignItems:"center",flexWrap:"wrap"}}>🦶
@@ -148,7 +159,7 @@ return <div key={c.key} onClick={()=>!c.fut&&me&&openDay(c.key)} style={{minHeig
 {det&&<div onClick={()=>setDet(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:100,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
 <div onClick={e=>e.stopPropagation()} style={{background:card,borderRadius:"20px 20px 0 0",padding:24,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",color:tx}}>
 <b style={{textTransform:"capitalize"}}>📅 {niceDate(det)}</b>
-{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{dm[u.id]?.done?"✅ "+(labelOf(dm[u.id])||"sport"):"—"}</span></div>)}
+{U.map(u=><div key={u.id} style={{marginTop:14}}>{u.emoji} <b>{u.name}</b>: <span style={{color:sub}}>{dn(det,u.id)?"✅ "+(full(det,u.id)||"sport"):sOf(det,u.id)>0?full(det,u.id):"—"}</span></div>)}
 {user&&<div style={{marginTop:18,paddingTop:16,borderTop:"1px solid "+bd}}>
 <div style={{fontSize:13,color:sub,marginBottom:10}}>{mine?.done?"Schimbă antrenamentul tău:":"Adaugă antrenamentul tău:"}</div>
 {picker(()=>{const v=makeVal();if(v)commit(det,v);})}
